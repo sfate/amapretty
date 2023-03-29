@@ -46,14 +46,6 @@ func Print(args ...interface{}) {
 
 	fmt.Printf("\n%s%s\n", fmtPrefix, caller)
 
-	if len(args) == 2 {
-		label := args[0]
-		value := args[1]
-
-		s, _ := json.MarshalIndent(value, "", "\t")
-		fmt.Printf("%s%s: %s\n", fmtPrefix, label, string(s))
-	} else {
-		s, _ := json.MarshalIndent(args, "", "\t")
-		fmt.Printf("%s%s\n", fmtPrefix, string(s))
-	}
+	s, _ := json.MarshalIndent(args, "", "\t")
+	fmt.Printf("%s%s\n", fmtPrefix, string(s))
 }
