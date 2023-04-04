@@ -24,7 +24,7 @@ amapretty.Print([]struct { Name string }{ { Name: "One" }, { Name: "Chosen" } })
 ```
 
 ## Preview
-![image](/preview.png)
+[![asciicast](https://asciinema.org/a/573936.svg)](https://asciinema.org/a/573936)
 
 ## License
 
