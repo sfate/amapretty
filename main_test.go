@@ -20,31 +20,16 @@ func init() {
 	}
 }
 
-func TestColors(t *testing.T) {
-	t.Run("check color codes", func(t *testing.T) {
-		assert.Equal(t, "\x1b[1;30mtest\x1b[0m", black("test"))
-		assert.Equal(t, "\x1b[1;31mtest\x1b[0m", red("test"))
-		assert.Equal(t, "\x1b[1;32mtest\x1b[0m", green("test"))
-		assert.Equal(t, "\x1b[1;33mtest\x1b[0m", yellow("test"))
-		assert.Equal(t, "\x1b[1;34mtest\x1b[0m", purple("test"))
-		assert.Equal(t, "\x1b[1;35mtest\x1b[0m", magenta("test"))
-		assert.Equal(t, "\x1b[1;36mtest\x1b[0m", teal("test"))
-		assert.Equal(t, "\x1b[1;37mtest\x1b[0m", white("test"))
-	})
-}
-
-func bufferOutput(args ...interface{}) string {
-	rescueStdout := os.Stdout
+func setOutput() func() string {
 	r, w, _ := os.Pipe()
-	os.Stdout = w
+	output = w
 
-	Print(args)
-
-	w.Close()
-	output, _ := io.ReadAll(r)
-	os.Stdout = rescueStdout
-
-	return string(output)
+	return func() string {
+		w.Close()
+		out, _ := io.ReadAll(r)
+		output = os.Stdout
+		return string(out)
+	}
 }
 
 func TestPrint(t *testing.T) {
@@ -55,20 +40,21 @@ func TestPrint(t *testing.T) {
 	}{
 		{
 			name:     "with simple string argument",
-			expected: "\n\x1b[1;32m[PrettyPrint] \x1b[1;34m02-24-2023 05:02:03\x1b[0m -- \x1b[0m\x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m\n\x1b[1;32m[PrettyPrint] \x1b[1;34m02-24-2023 05:02:03\x1b[0m -- \x1b[0m[\n\t[\n\t\t\"test\"\n\t]\n]\n",
 			args:     "test",
+			expected: "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"test\"\n]\n",
 		},
 		{
 			name:     "with complex args",
-			expected: "\n\x1b[1;32m[PrettyPrint] \x1b[1;34m02-24-2023 05:02:03\x1b[0m -- \x1b[0m\x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m\n\x1b[1;32m[PrettyPrint] \x1b[1;34m02-24-2023 05:02:03\x1b[0m -- \x1b[0m[\n\t[\n\t\t[\n\t\t\t{\n\t\t\t\t\"Name\": \"One\"\n\t\t\t},\n\t\t\t{\n\t\t\t\t\"Name\": \"Chosen\"\n\t\t\t}\n\t\t]\n\t]\n]\n",
 			args:     []struct{ Name string }{{Name: "One"}, {Name: "Chosen"}},
+			expected: "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t[\n\t\t{\n\t\t\t\"Name\": \"One\"\n\t\t},\n\t\t{\n\t\t\t\"Name\": \"Chosen\"\n\t\t}\n\t]\n]\n",
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			output := bufferOutput(c.args)
-			assert.Equal(t, c.expected, output)
+			outputCallbackF := setOutput()
+			Print(c.args)
+			assert.Equal(t, c.expected, outputCallbackF())
 		})
 	}
 }

@@ -3,23 +3,18 @@ package amapretty
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"runtime"
 	"time"
 )
 
-var (
-	black   = fmtColor("\033[1;30m%s\033[0m")
-	red     = fmtColor("\033[1;31m%s\033[0m")
-	green   = fmtColor("\033[1;32m%s\033[0m")
-	yellow  = fmtColor("\033[1;33m%s\033[0m")
-	purple  = fmtColor("\033[1;34m%s\033[0m")
-	magenta = fmtColor("\033[1;35m%s\033[0m")
-	teal    = fmtColor("\033[1;36m%s\033[0m")
-	white   = fmtColor("\033[1;37m%s\033[0m")
-)
-
 var timeNow = time.Now
 var runtimeCaller = runtime.Caller
+var output = os.Stdout
+
+const (
+	prefix = "amapretty"
+)
 
 func fmtColor(colorString string) func(...interface{}) string {
 	sprint := func(args ...interface{}) string {
@@ -30,22 +25,17 @@ func fmtColor(colorString string) func(...interface{}) string {
 }
 
 func Print(args ...interface{}) {
-	timeNow := timeNow().Format("01-02-2006 15:04:05")
-	fmtTimeNow := purple(timeNow)
-
-	prefix := fmt.Sprintf("[%s] %s -- ", "PrettyPrint", fmtTimeNow)
-	fmtPrefix := green(prefix)
+	timeNow := timeNow().Format(time.RFC3339)
+	fmtTimeNow := fmt.Sprintf("\033[1;34m%s\033[0m", timeNow)
+	fmtPrefix := fmt.Sprintf("\033[1;32m%s\033[0m", prefix)
 
 	_, fileName, fileLine, ok := runtimeCaller(1)
-
 	caller := ""
 	if ok {
 		caller = fmt.Sprintf("%s:%d", fileName, fileLine)
-		caller = teal(caller)
+		caller = fmt.Sprintf("\033[1;36m%s\033[0m", caller)
 	}
 
-	fmt.Printf("\n%s%s\n", fmtPrefix, caller)
-
 	s, _ := json.MarshalIndent(args, "", "\t")
-	fmt.Printf("%s%s\n", fmtPrefix, string(s))
+	fmt.Fprintf(output, "[%s] %s %s -- %s\n", fmtPrefix, fmtTimeNow, caller, string(s))
 }
