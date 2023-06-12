@@ -31,3 +31,8 @@ func Print(args ...interface{}) {
 	s, _ := json.MarshalIndent(args, "", "\t")
 	fmt.Fprintf(output, "[%s] %s %s -- %s\n", fmtPrefix, fmtTimeNow, caller, string(s))
 }
+
+func Printf(format string, args ...interface{}) {
+	s := fmt.Sprintf(format, args...)
+	Print(s)
+}

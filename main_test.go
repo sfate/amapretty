@@ -58,3 +58,10 @@ func TestPrint(t *testing.T) {
 		})
 	}
 }
+
+func TestPrintf(t *testing.T) {
+	outputCallbackF := setOutput()
+	Printf("dime: %d, val: %s, time: %v", 123, "none", timeNow().Format(time.RFC3339))
+	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"dime: 123, val: none, time: 2023-02-24T05:02:03Z\"\n]\n"
+	assert.Equal(t, expected, outputCallbackF())
+}
