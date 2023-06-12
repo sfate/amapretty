@@ -39,6 +39,11 @@ ifneq (, $(shell git status -s))
 	@echo "$(C_RED)Ucommitted changes detected, cannot proceed$(NC)"
 	@exit 1
 endif
+ifneq (main, $(shell git rev-parse --abbrev-ref HEAD))
+	@git checkout main
+	@git fetch --all --prune
+	@git reset --hard origin/main
+endif
 ifneq (, $(shell git tag | grep $(VERSION)))
 	@echo "$(C_RED)specified VERSION already exists$(NC)"
 	@exit 1

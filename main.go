@@ -16,14 +16,6 @@ const (
 	prefix = "amapretty"
 )
 
-func fmtColor(colorString string) func(...interface{}) string {
-	sprint := func(args ...interface{}) string {
-		return fmt.Sprintf(colorString,
-			fmt.Sprint(args...))
-	}
-	return sprint
-}
-
 func Print(args ...interface{}) {
 	timeNow := timeNow().Format(time.RFC3339)
 	fmtTimeNow := fmt.Sprintf("\033[1;34m%s\033[0m", timeNow)
