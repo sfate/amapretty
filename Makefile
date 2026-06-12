@@ -5,16 +5,11 @@ C_YELLOW=\033[0;33m
 C_BLUE=\033[0;34m
 NC=\033[0m
 
-ifeq (, $(shell which go))
-	@echo $(C_YELLOW)No golang in PATH, installing$(NC)
-	brew install golang
-endif
-ifeq (, $(shell which git))
-	@echo $(C_YELLOW)No git in PATH, installing$(NC)
-	brew install git
-endif
-
 all: lint audit test
+
+dev-tools:
+	@command -v go >/dev/null || (echo "$(C_RED)go is required but was not found in PATH$(NC)" && exit 1)
+	@command -v git >/dev/null || (echo "$(C_RED)git is required but was not found in PATH$(NC)" && exit 1)
 
 lint:
 	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.4.0 run --allow-parallel-runners
@@ -29,26 +24,12 @@ latest-release:
 	@echo "$(C_GREEN)Latest release version $(C_BLUE)$(shell git describe --tags $(shell git rev-list --tags --max-count=1))$(NC)"
 	$(info)
 
-ifneq (, $(VERSION))
-ifeq (, $(shell echo $(VERSION) | grep -E "v\d+\.\d+\.\d+"))
-	@echo "$(C_RED)VERSION format doesn't match expected one: vX.Y.Z (e.g. v1.2.3)$(NC)"
-	@exit 1
-endif
-ifneq (, $(shell git status -s))
-	@echo "$(C_RED)Ucommitted changes detected, cannot proceed$(NC)"
-	@exit 1
-endif
-ifneq (main, $(shell git rev-parse --abbrev-ref HEAD))
-	@git checkout main
-	@git fetch --all --prune
-	@git reset --hard origin/main
-endif
-ifneq (, $(shell git tag | grep $(VERSION)))
-	@echo "$(C_RED)specified VERSION already exists$(NC)"
-	@exit 1
-endif
-
 publish-release: latest-release
+	@test -n "$(VERSION)" || (echo "$(C_RED)VERSION is required, e.g. make publish-release VERSION=v1.2.3$(NC)" && exit 1)
+	@echo "$(VERSION)" | grep -Eq "^v[0-9]+\.[0-9]+\.[0-9]+$$" || (echo "$(C_RED)VERSION format doesn't match expected one: vX.Y.Z (e.g. v1.2.3)$(NC)" && exit 1)
+	@test -z "$$(git status -s)" || (echo "$(C_RED)Uncommitted changes detected, cannot proceed$(NC)" && exit 1)
+	@test "$$(git rev-parse --abbrev-ref HEAD)" = "main" || (echo "$(C_RED)publish-release must be run from main$(NC)" && exit 1)
+	@! git tag | grep -Fx "$(VERSION)" >/dev/null || (echo "$(C_RED)specified VERSION already exists$(NC)" && exit 1)
 	@echo "$(C_YELLOW)Clean up$(NC)"
 	@go mod tidy
 	@echo "$(C_YELLOW)Run lint$(NC)"
@@ -62,4 +43,3 @@ publish-release: latest-release
 	@echo "$(C_YELLOW)Push release tag$(NC)"
 	@git push origin $(VERSION) > /dev/null
 	@echo "$(C_GREEN)New version $(VERSION) released$(NC)"
-endif
