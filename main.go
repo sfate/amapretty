@@ -8,12 +8,14 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
 var timeNow = time.Now
 var runtimeCaller = runtime.Caller
 var output = os.Stdout
+var writeMu sync.Mutex
 var lookupEnv = os.LookupEnv
 var isTerminal = func(w io.Writer) bool {
 	f, ok := w.(*os.File)
@@ -63,7 +65,10 @@ func Sprintf(format string, args ...interface{}) string {
 }
 
 func fprintWithCallerSkip(w io.Writer, skip int, args ...interface{}) (int, error) {
-	return fmt.Fprint(w, formatWithCallerSkip(skip, shouldUseColor(w), args...))
+	s := formatWithCallerSkip(skip, shouldUseColor(w), args...)
+	writeMu.Lock()
+	defer writeMu.Unlock()
+	return fmt.Fprint(w, s)
 }
 
 func sprintWithCallerSkip(skip int, args ...interface{}) string {

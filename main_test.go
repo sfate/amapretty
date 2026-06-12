@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -244,4 +246,42 @@ func TestPrintWithoutCaller(t *testing.T) {
 	out := outputCallbackF()
 	require.NotContains(t, out, "\x1b[1;36m")
 	require.True(t, strings.Contains(out, " -- [\n\t\"test\"\n]\n"))
+}
+
+func TestFprintSerializesConcurrentWrites(t *testing.T) {
+	setTerminal(t, false)
+
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		return uintptr(0), "/Users/username/path/project/main.go", 101, true
+	}
+
+	w := &overlapDetectingWriter{}
+	var wg sync.WaitGroup
+	for i := range 20 {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, err := Fprint(w, i)
+			if err != nil {
+				t.Errorf("Fprint() error = %v", err)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	require.Zero(t, w.overlaps.Load())
+}
+
+type overlapDetectingWriter struct {
+	active   atomic.Int32
+	overlaps atomic.Int32
+}
+
+func (w *overlapDetectingWriter) Write(p []byte) (int, error) {
+	if w.active.Add(1) > 1 {
+		w.overlaps.Add(1)
+	}
+	time.Sleep(time.Millisecond)
+	w.active.Add(-1)
+	return len(p), nil
 }
