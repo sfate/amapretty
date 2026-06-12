@@ -1,6 +1,7 @@
 package amapretty
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"strings"
@@ -37,7 +38,7 @@ func setOutput(t *testing.T) func() string {
 
 func TestPrint(t *testing.T) {
 	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
-		require.Equal(t, 1, skip)
+		require.Equal(t, 3, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
 	}
 
@@ -69,7 +70,7 @@ func TestPrint(t *testing.T) {
 
 func TestPrintf(t *testing.T) {
 	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
-		require.Equal(t, 2, skip)
+		require.Equal(t, 3, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
 	}
 
@@ -77,6 +78,54 @@ func TestPrintf(t *testing.T) {
 	Printf("dime: %d, val: %s, time: %v", 123, "none", timeNow().Format(time.RFC3339))
 	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"dime: 123, val: none, time: 2023-02-24T05:02:03Z\"\n]\n"
 	require.Equal(t, expected, outputCallbackF())
+}
+
+func TestFprint(t *testing.T) {
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		require.Equal(t, 3, skip)
+		return uintptr(0), "/Users/username/path/project/main.go", 101, true
+	}
+
+	var buf bytes.Buffer
+	n, err := Fprint(&buf, "test")
+	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"test\"\n]\n"
+	require.NoError(t, err)
+	require.Equal(t, len(expected), n)
+	require.Equal(t, expected, buf.String())
+}
+
+func TestFprintf(t *testing.T) {
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		require.Equal(t, 3, skip)
+		return uintptr(0), "/Users/username/path/project/main.go", 101, true
+	}
+
+	var buf bytes.Buffer
+	n, err := Fprintf(&buf, "value: %d", 123)
+	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"value: 123\"\n]\n"
+	require.NoError(t, err)
+	require.Equal(t, len(expected), n)
+	require.Equal(t, expected, buf.String())
+}
+
+func TestSprint(t *testing.T) {
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		require.Equal(t, 2, skip)
+		return uintptr(0), "/Users/username/path/project/main.go", 101, true
+	}
+
+	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"test\"\n]\n"
+	require.Equal(t, expected, Sprint("test"))
+}
+
+func TestSprintf(t *testing.T) {
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		require.Equal(t, 2, skip)
+		return uintptr(0), "/Users/username/path/project/main.go", 101, true
+	}
+
+	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"value: 123\"\n]\n"
+	require.Equal(t, expected, Sprintf("value: %d", 123))
 }
 
 func TestPrintWithMultipleArguments(t *testing.T) {
