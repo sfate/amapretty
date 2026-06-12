@@ -12,6 +12,16 @@ import (
 var timeNow = time.Now
 var runtimeCaller = runtime.Caller
 var output = os.Stdout
+var lookupEnv = os.LookupEnv
+var isTerminal = func(w io.Writer) bool {
+	f, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+
+	stat, err := f.Stat()
+	return err == nil && stat.Mode()&os.ModeCharDevice != 0
+}
 
 const (
 	prefix = "amapretty"
@@ -51,19 +61,23 @@ func Sprintf(format string, args ...interface{}) string {
 }
 
 func fprintWithCallerSkip(w io.Writer, skip int, args ...interface{}) (int, error) {
-	return fmt.Fprint(w, sprintWithCallerSkip(skip, args...))
+	return fmt.Fprint(w, formatWithCallerSkip(skip, shouldUseColor(w), args...))
 }
 
 func sprintWithCallerSkip(skip int, args ...interface{}) string {
+	return formatWithCallerSkip(skip, shouldUseColor(output), args...)
+}
+
+func formatWithCallerSkip(skip int, useColor bool, args ...interface{}) string {
 	timeNow := timeNow().Format(time.RFC3339)
-	fmtTimeNow := fmt.Sprintf("\033[1;34m%s\033[0m", timeNow)
-	fmtPrefix := fmt.Sprintf("\033[1;32m%s\033[0m", prefix)
+	fmtTimeNow := colorize(useColor, "1;34", timeNow)
+	fmtPrefix := colorize(useColor, "1;32", prefix)
 
 	_, fileName, fileLine, ok := runtimeCaller(skip)
 	caller := ""
 	if ok {
 		caller = fmt.Sprintf("%s:%d", fileName, fileLine)
-		caller = fmt.Sprintf("\033[1;36m%s\033[0m", caller)
+		caller = colorize(useColor, "1;36", caller)
 	}
 
 	s, err := json.MarshalIndent(args, "", "\t")
@@ -77,4 +91,18 @@ func sprintWithCallerSkip(skip int, args ...interface{}) string {
 		}, "", "\t")
 	}
 	return fmt.Sprintf("[%s] %s %s -- %s\n", fmtPrefix, fmtTimeNow, caller, string(s))
+}
+
+func shouldUseColor(w io.Writer) bool {
+	if _, ok := lookupEnv("NO_COLOR"); ok {
+		return false
+	}
+	return isTerminal(w)
+}
+
+func colorize(enabled bool, code string, s string) string {
+	if !enabled {
+		return s
+	}
+	return fmt.Sprintf("\033[%sm%s\033[0m", code, s)
 }

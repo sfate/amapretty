@@ -36,7 +36,26 @@ func setOutput(t *testing.T) func() string {
 	}
 }
 
+func setTerminal(t *testing.T, enabled bool) {
+	t.Helper()
+
+	previousIsTerminal := isTerminal
+	previousLookupEnv := lookupEnv
+	isTerminal = func(w io.Writer) bool {
+		return enabled
+	}
+	lookupEnv = func(key string) (string, bool) {
+		return "", false
+	}
+	t.Cleanup(func() {
+		isTerminal = previousIsTerminal
+		lookupEnv = previousLookupEnv
+	})
+}
+
 func TestPrint(t *testing.T) {
+	setTerminal(t, true)
+
 	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
 		require.Equal(t, 3, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
@@ -69,6 +88,8 @@ func TestPrint(t *testing.T) {
 }
 
 func TestPrintf(t *testing.T) {
+	setTerminal(t, true)
+
 	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
 		require.Equal(t, 3, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
@@ -81,6 +102,8 @@ func TestPrintf(t *testing.T) {
 }
 
 func TestFprint(t *testing.T) {
+	setTerminal(t, true)
+
 	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
 		require.Equal(t, 3, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
@@ -95,6 +118,8 @@ func TestFprint(t *testing.T) {
 }
 
 func TestFprintf(t *testing.T) {
+	setTerminal(t, true)
+
 	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
 		require.Equal(t, 3, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
@@ -109,6 +134,8 @@ func TestFprintf(t *testing.T) {
 }
 
 func TestSprint(t *testing.T) {
+	setTerminal(t, true)
+
 	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
 		require.Equal(t, 2, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
@@ -119,6 +146,8 @@ func TestSprint(t *testing.T) {
 }
 
 func TestSprintf(t *testing.T) {
+	setTerminal(t, true)
+
 	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
 		require.Equal(t, 2, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
@@ -128,7 +157,41 @@ func TestSprintf(t *testing.T) {
 	require.Equal(t, expected, Sprintf("value: %d", 123))
 }
 
+func TestFprintOmitsColorForNonTerminalWriter(t *testing.T) {
+	setTerminal(t, false)
+
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		return uintptr(0), "/Users/username/path/project/main.go", 101, true
+	}
+
+	var buf bytes.Buffer
+	_, err := Fprint(&buf, "test")
+	require.NoError(t, err)
+	require.Equal(t, "[amapretty] 2023-02-24T05:02:03Z /Users/username/path/project/main.go:101 -- [\n\t\"test\"\n]\n", buf.String())
+}
+
+func TestFprintRespectsNoColor(t *testing.T) {
+	setTerminal(t, true)
+	lookupEnv = func(key string) (string, bool) {
+		if key == "NO_COLOR" {
+			return "1", true
+		}
+		return "", false
+	}
+
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		return uintptr(0), "/Users/username/path/project/main.go", 101, true
+	}
+
+	var buf bytes.Buffer
+	_, err := Fprint(&buf, "test")
+	require.NoError(t, err)
+	require.Equal(t, "[amapretty] 2023-02-24T05:02:03Z /Users/username/path/project/main.go:101 -- [\n\t\"test\"\n]\n", buf.String())
+}
+
 func TestPrintWithMultipleArguments(t *testing.T) {
+	setTerminal(t, true)
+
 	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
 	}
@@ -140,6 +203,8 @@ func TestPrintWithMultipleArguments(t *testing.T) {
 }
 
 func TestPrintWithUnsupportedJSONValue(t *testing.T) {
+	setTerminal(t, true)
+
 	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
 	}
@@ -152,6 +217,8 @@ func TestPrintWithUnsupportedJSONValue(t *testing.T) {
 }
 
 func TestPrintWithoutCaller(t *testing.T) {
+	setTerminal(t, true)
+
 	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
 		return uintptr(0), "", 0, false
 	}
