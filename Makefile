@@ -1,4 +1,4 @@
-.PHONY: all dev-tools lint test latest-release publish-release
+.PHONY: all dev-tools lint audit test latest-release publish-release
 C_RED=\033[0;31m
 C_GREEN=\033[0;32m
 C_YELLOW=\033[0;33m
@@ -9,19 +9,18 @@ ifeq (, $(shell which go))
 	@echo $(C_YELLOW)No golang in PATH, installing$(NC)
 	brew install golang
 endif
-ifeq (, $(shell which golangci-lint))
-	@echo $(C_YELLOW)No golangcli-lint in PATH, installing$(NC)
-	brew install golangci/tap/golangci-lint
-endif
 ifeq (, $(shell which git))
 	@echo $(C_YELLOW)No git in PATH, installing$(NC)
 	brew install git
 endif
 
-all: lint test
+all: lint audit test
 
 lint:
-	golangci-lint run
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.4.0 run --allow-parallel-runners
+
+audit:
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 test:
 	go test -mod=readonly -count=1 -p 1 -failfast -race ./...
