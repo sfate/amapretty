@@ -3,21 +3,20 @@ package amapretty
 import (
 	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
-func init() {
+func TestMain(m *testing.M) {
 	timeNow = func() time.Time {
 		t, _ := time.Parse("2006-01-02 15:04:05", "2023-02-24 05:02:03")
 		return t
 	}
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
-		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
+	os.Exit(m.Run())
 }
 
 func setOutput(t *testing.T) func() string {
@@ -37,6 +36,11 @@ func setOutput(t *testing.T) func() string {
 }
 
 func TestPrint(t *testing.T) {
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		require.Equal(t, 1, skip)
+		return uintptr(0), "/Users/username/path/project/main.go", 101, true
+	}
+
 	cases := []struct {
 		name     string
 		expected string
@@ -64,8 +68,48 @@ func TestPrint(t *testing.T) {
 }
 
 func TestPrintf(t *testing.T) {
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		require.Equal(t, 2, skip)
+		return uintptr(0), "/Users/username/path/project/main.go", 101, true
+	}
+
 	outputCallbackF := setOutput(t)
 	Printf("dime: %d, val: %s, time: %v", 123, "none", timeNow().Format(time.RFC3339))
 	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"dime: 123, val: none, time: 2023-02-24T05:02:03Z\"\n]\n"
 	require.Equal(t, expected, outputCallbackF())
+}
+
+func TestPrintWithMultipleArguments(t *testing.T) {
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		return uintptr(0), "/Users/username/path/project/main.go", 101, true
+	}
+
+	outputCallbackF := setOutput(t)
+	Print("first", 2)
+	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"first\",\n\t2\n]\n"
+	require.Equal(t, expected, outputCallbackF())
+}
+
+func TestPrintWithUnsupportedJSONValue(t *testing.T) {
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		return uintptr(0), "/Users/username/path/project/main.go", 101, true
+	}
+
+	outputCallbackF := setOutput(t)
+	Print(func() {})
+	out := outputCallbackF()
+	require.Contains(t, out, `"error": "json: unsupported type: func()"`)
+	require.Contains(t, out, `"args": "[]interface {}{(func())(`)
+}
+
+func TestPrintWithoutCaller(t *testing.T) {
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		return uintptr(0), "", 0, false
+	}
+
+	outputCallbackF := setOutput(t)
+	Print("test")
+	out := outputCallbackF()
+	require.NotContains(t, out, "\x1b[1;36m")
+	require.True(t, strings.Contains(out, " -- [\n\t\"test\"\n]\n"))
 }
