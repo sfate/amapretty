@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -187,6 +188,21 @@ func TestFprintRespectsNoColor(t *testing.T) {
 	_, err := Fprint(&buf, "test")
 	require.NoError(t, err)
 	require.Equal(t, "[amapretty] 2023-02-24T05:02:03Z /Users/username/path/project/main.go:101 -- [\n\t\"test\"\n]\n", buf.String())
+}
+
+func TestPrintUsesRelativeCallerForLocalPath(t *testing.T) {
+	setTerminal(t, true)
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+
+	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+		return uintptr(0), filepath.Join(wd, "main.go"), 101, true
+	}
+
+	outputCallbackF := setOutput(t)
+	Print("test")
+	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36mmain.go:101\x1b[0m -- [\n\t\"test\"\n]\n"
+	require.Equal(t, expected, outputCallbackF())
 }
 
 func TestPrintWithMultipleArguments(t *testing.T) {

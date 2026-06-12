@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -76,7 +78,7 @@ func formatWithCallerSkip(skip int, useColor bool, args ...interface{}) string {
 	_, fileName, fileLine, ok := runtimeCaller(skip)
 	caller := ""
 	if ok {
-		caller = fmt.Sprintf("%s:%d", fileName, fileLine)
+		caller = formatCaller(fileName, fileLine)
 		caller = colorize(useColor, "1;36", caller)
 	}
 
@@ -105,4 +107,18 @@ func colorize(enabled bool, code string, s string) string {
 		return s
 	}
 	return fmt.Sprintf("\033[%sm%s\033[0m", code, s)
+}
+
+func formatCaller(fileName string, fileLine int) string {
+	fileName = filepath.Clean(fileName)
+	if wd, err := os.Getwd(); err == nil {
+		if rel, err := filepath.Rel(wd, fileName); err == nil && isLocalPath(rel) {
+			fileName = rel
+		}
+	}
+	return fmt.Sprintf("%s:%d", fileName, fileLine)
+}
+
+func isLocalPath(path string) bool {
+	return path != ".." && !strings.HasPrefix(path, ".."+string(filepath.Separator))
 }
