@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -20,13 +20,17 @@ func init() {
 	}
 }
 
-func setOutput() func() string {
-	r, w, _ := os.Pipe()
+func setOutput(t *testing.T) func() string {
+	t.Helper()
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
 	output = w
 
 	return func() string {
-		w.Close()
-		out, _ := io.ReadAll(r)
+		require.NoError(t, w.Close())
+		out, err := io.ReadAll(r)
+		require.NoError(t, err)
 		output = os.Stdout
 		return string(out)
 	}
@@ -52,16 +56,16 @@ func TestPrint(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			outputCallbackF := setOutput()
+			outputCallbackF := setOutput(t)
 			Print(c.args)
-			assert.Equal(t, c.expected, outputCallbackF())
+			require.Equal(t, c.expected, outputCallbackF())
 		})
 	}
 }
 
 func TestPrintf(t *testing.T) {
-	outputCallbackF := setOutput()
+	outputCallbackF := setOutput(t)
 	Printf("dime: %d, val: %s, time: %v", 123, "none", timeNow().Format(time.RFC3339))
 	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"dime: 123, val: none, time: 2023-02-24T05:02:03Z\"\n]\n"
-	assert.Equal(t, expected, outputCallbackF())
+	require.Equal(t, expected, outputCallbackF())
 }
