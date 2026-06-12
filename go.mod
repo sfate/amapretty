@@ -1,5 +1,7 @@
 module github.com/sfate/amapretty
 
+go 1.25
+
 require github.com/stretchr/testify v1.11.1
 
 require (
@@ -7,5 +9,3 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-go 1.19
