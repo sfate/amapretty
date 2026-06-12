@@ -8,7 +8,6 @@ on:
 
 jobs:
   lint:
-    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +17,6 @@ jobs:
       - run: make lint
 
   test:
-    name: Test
     needs: lint
     runs-on: ubuntu-latest
     steps:
@@ -29,7 +27,6 @@ jobs:
       - run: make test
 
   audit:
-    name: Audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
