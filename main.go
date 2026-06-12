@@ -53,26 +53,11 @@ func Fprintf(w io.Writer, format string, args ...interface{}) (int, error) {
 	return fprintWithCallerSkip(w, 3, s)
 }
 
-// Sprint returns values formatted as indented JSON with a timestamp and caller reference.
-func Sprint(args ...interface{}) string {
-	return sprintWithCallerSkip(2, args...)
-}
-
-// Sprintf formats according to a format specifier and returns the formatted output.
-func Sprintf(format string, args ...interface{}) string {
-	s := fmt.Sprintf(format, args...)
-	return sprintWithCallerSkip(2, s)
-}
-
 func fprintWithCallerSkip(w io.Writer, skip int, args ...interface{}) (int, error) {
 	s := formatWithCallerSkip(skip, shouldUseColor(w), args...)
 	writeMu.Lock()
 	defer writeMu.Unlock()
 	return fmt.Fprint(w, s)
-}
-
-func sprintWithCallerSkip(skip int, args ...interface{}) string {
-	return formatWithCallerSkip(skip, shouldUseColor(output), args...)
 }
 
 func formatWithCallerSkip(skip int, useColor bool, args ...interface{}) string {

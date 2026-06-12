@@ -136,30 +136,6 @@ func TestFprintf(t *testing.T) {
 	require.Equal(t, expected, buf.String())
 }
 
-func TestSprint(t *testing.T) {
-	setTerminal(t, true)
-
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
-		require.Equal(t, 2, skip)
-		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
-
-	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"test\"\n]\n"
-	require.Equal(t, expected, Sprint("test"))
-}
-
-func TestSprintf(t *testing.T) {
-	setTerminal(t, true)
-
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
-		require.Equal(t, 2, skip)
-		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
-
-	expected := "[\x1b[1;32mamapretty\x1b[0m] \x1b[1;34m2023-02-24T05:02:03Z\x1b[0m \x1b[1;36m/Users/username/path/project/main.go:101\x1b[0m -- [\n\t\"value: 123\"\n]\n"
-	require.Equal(t, expected, Sprintf("value: %d", 123))
-}
-
 func TestFprintOmitsColorForNonTerminalWriter(t *testing.T) {
 	setTerminal(t, false)
 

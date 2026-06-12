@@ -34,13 +34,6 @@ _, err := amapretty.Fprint(&buf, "string value")
 _, err = amapretty.Fprintf(&buf, "user_id=%d", 123)
 ```
 
-Use `Sprint` and `Sprintf` when you want the formatted string:
-
-```go
-s := amapretty.Sprint("string value")
-s = amapretty.Sprintf("user_id=%d", 123)
-```
-
 ## Output
 
 Output contains the fixed `amapretty` prefix, an RFC3339 timestamp, the caller
