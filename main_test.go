@@ -15,12 +15,15 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	previousTimeNow := timeNow
 	timeNow = func() time.Time {
 		t, _ := time.Parse("2006-01-02 15:04:05", "2023-02-24 05:02:03")
 		return t
 	}
 
-	os.Exit(m.Run())
+	code := m.Run()
+	timeNow = previousTimeNow
+	os.Exit(code)
 }
 
 func setOutput(t *testing.T) func() string {
@@ -28,15 +31,30 @@ func setOutput(t *testing.T) func() string {
 
 	r, w, err := os.Pipe()
 	require.NoError(t, err)
+	previousOutput := output
 	output = w
+	t.Cleanup(func() {
+		output = previousOutput
+		_ = w.Close()
+		_ = r.Close()
+	})
 
 	return func() string {
 		require.NoError(t, w.Close())
 		out, err := io.ReadAll(r)
 		require.NoError(t, err)
-		output = os.Stdout
 		return string(out)
 	}
+}
+
+func setRuntimeCaller(t *testing.T, caller func(int) (uintptr, string, int, bool)) {
+	t.Helper()
+
+	previousRuntimeCaller := runtimeCaller
+	runtimeCaller = caller
+	t.Cleanup(func() {
+		runtimeCaller = previousRuntimeCaller
+	})
 }
 
 func setTerminal(t *testing.T, enabled bool) {
@@ -59,10 +77,10 @@ func setTerminal(t *testing.T, enabled bool) {
 func TestPrint(t *testing.T) {
 	setTerminal(t, true)
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+	setRuntimeCaller(t, func(skip int) (pc uintptr, file string, line int, ok bool) {
 		require.Equal(t, 3, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
+	})
 
 	cases := []struct {
 		name     string
@@ -93,10 +111,10 @@ func TestPrint(t *testing.T) {
 func TestPrintf(t *testing.T) {
 	setTerminal(t, true)
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+	setRuntimeCaller(t, func(skip int) (pc uintptr, file string, line int, ok bool) {
 		require.Equal(t, 3, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
+	})
 
 	outputCallbackF := setOutput(t)
 	Printf("dime: %d, val: %s, time: %v", 123, "none", timeNow().Format(time.RFC3339))
@@ -107,10 +125,10 @@ func TestPrintf(t *testing.T) {
 func TestFprint(t *testing.T) {
 	setTerminal(t, true)
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+	setRuntimeCaller(t, func(skip int) (pc uintptr, file string, line int, ok bool) {
 		require.Equal(t, 3, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
+	})
 
 	var buf bytes.Buffer
 	n, err := Fprint(&buf, "test")
@@ -123,10 +141,10 @@ func TestFprint(t *testing.T) {
 func TestFprintf(t *testing.T) {
 	setTerminal(t, true)
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+	setRuntimeCaller(t, func(skip int) (pc uintptr, file string, line int, ok bool) {
 		require.Equal(t, 3, skip)
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
+	})
 
 	var buf bytes.Buffer
 	n, err := Fprintf(&buf, "value: %d", 123)
@@ -139,9 +157,9 @@ func TestFprintf(t *testing.T) {
 func TestFprintOmitsColorForNonTerminalWriter(t *testing.T) {
 	setTerminal(t, false)
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+	setRuntimeCaller(t, func(skip int) (pc uintptr, file string, line int, ok bool) {
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
+	})
 
 	var buf bytes.Buffer
 	_, err := Fprint(&buf, "test")
@@ -158,9 +176,9 @@ func TestFprintRespectsNoColor(t *testing.T) {
 		return "", false
 	}
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+	setRuntimeCaller(t, func(skip int) (pc uintptr, file string, line int, ok bool) {
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
+	})
 
 	var buf bytes.Buffer
 	_, err := Fprint(&buf, "test")
@@ -173,9 +191,9 @@ func TestPrintUsesRelativeCallerForLocalPath(t *testing.T) {
 	wd, err := os.Getwd()
 	require.NoError(t, err)
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+	setRuntimeCaller(t, func(skip int) (pc uintptr, file string, line int, ok bool) {
 		return uintptr(0), filepath.Join(wd, "main.go"), 101, true
-	}
+	})
 
 	outputCallbackF := setOutput(t)
 	Print("test")
@@ -186,9 +204,9 @@ func TestPrintUsesRelativeCallerForLocalPath(t *testing.T) {
 func TestPrintWithMultipleArguments(t *testing.T) {
 	setTerminal(t, true)
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+	setRuntimeCaller(t, func(skip int) (pc uintptr, file string, line int, ok bool) {
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
+	})
 
 	outputCallbackF := setOutput(t)
 	Print("first", 2)
@@ -199,9 +217,9 @@ func TestPrintWithMultipleArguments(t *testing.T) {
 func TestPrintWithUnsupportedJSONValue(t *testing.T) {
 	setTerminal(t, true)
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+	setRuntimeCaller(t, func(skip int) (pc uintptr, file string, line int, ok bool) {
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
+	})
 
 	outputCallbackF := setOutput(t)
 	Print(func() {})
@@ -213,9 +231,9 @@ func TestPrintWithUnsupportedJSONValue(t *testing.T) {
 func TestPrintWithoutCaller(t *testing.T) {
 	setTerminal(t, true)
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+	setRuntimeCaller(t, func(skip int) (pc uintptr, file string, line int, ok bool) {
 		return uintptr(0), "", 0, false
-	}
+	})
 
 	outputCallbackF := setOutput(t)
 	Print("test")
@@ -227,9 +245,9 @@ func TestPrintWithoutCaller(t *testing.T) {
 func TestFprintSerializesConcurrentWrites(t *testing.T) {
 	setTerminal(t, false)
 
-	runtimeCaller = func(skip int) (pc uintptr, file string, line int, ok bool) {
+	setRuntimeCaller(t, func(skip int) (pc uintptr, file string, line int, ok bool) {
 		return uintptr(0), "/Users/username/path/project/main.go", 101, true
-	}
+	})
 
 	w := &overlapDetectingWriter{}
 	var wg sync.WaitGroup

@@ -32,11 +32,13 @@ const (
 )
 
 // Print writes values to stdout as indented JSON with a timestamp and caller reference.
+// It ignores errors writing to stdout.
 func Print(args ...interface{}) {
 	_, _ = fprintWithCallerSkip(output, 3, args...)
 }
 
 // Printf formats according to a format specifier and writes the result through Print.
+// It ignores errors writing to stdout.
 func Printf(format string, args ...interface{}) {
 	s := fmt.Sprintf(format, args...)
 	_, _ = fprintWithCallerSkip(output, 3, s)

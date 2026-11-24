@@ -45,14 +45,25 @@ file and line, and an indented JSON array of the provided values:
 ]
 ```
 
+The array always represents the arguments passed to `Print` or `Fprint`: no
+arguments produce `[]`, one argument produces a one-element array, and multiple
+arguments produce an array with one element per argument. `Printf` and
+`Fprintf` format their inputs first, then print the resulting string as the
+single array element.
+
 Caller paths inside the current working directory are printed relative to that
 directory. Paths outside it remain absolute.
 
 ANSI colors are emitted only when the destination writer is a terminal. Set
 `NO_COLOR` to disable colors.
 
+`Fprint` and `Fprintf` return errors from the destination writer. `Print` and
+`Printf` write to stdout and intentionally ignore write errors.
+
 If a value cannot be encoded as JSON, amapretty prints a JSON object containing
-the marshal error and a Go-syntax fallback representation of the arguments.
+the marshal error and a Go-syntax fallback representation of all arguments.
+Both normal output and this fallback may include sensitive fields or values, so
+avoid passing secrets or other sensitive data to these debug helpers.
 
 ## Preview
 [![asciicast](https://asciinema.org/a/573936.svg)](https://asciinema.org/a/573936)
